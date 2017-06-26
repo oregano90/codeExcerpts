@@ -1,0 +1,2 @@
+This is a program implemented in Delphi, when I still visited school, showing 3D objects without using any pre-implemented 3D libraries.
+Run the „Project1.exe“ or have a look in the folder „\Programm“ where you can find the code.
