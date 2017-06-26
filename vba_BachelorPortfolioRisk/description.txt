@@ -1,0 +1,1 @@
+This is a program written in VBA to apply different risk measures on a portfolio of 10 stocks. It was written during a Bachelor Seminar on Asset Management Strategies.
