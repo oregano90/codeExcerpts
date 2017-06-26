@@ -1,3 +1,3 @@
-This program solves the ODE from the model in “A Model of Monetary Policy and Risk Premia” by Drechsler, Savov, and Schnabl (2015).
+This program solves the ODE from the model in â€œA Model of Monetary Policy and Risk Premiaâ€ by Drechsler, Savov, and Schnabl (2015). It was developed during my Master Thesis.
 
-For execution, run “BaselineModel.m” in the folder Baseline Model.
+For execution, run â€œBaselineModel.mâ€ in the folder Baseline Model.
