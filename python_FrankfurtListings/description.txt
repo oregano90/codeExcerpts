@@ -1,3 +1,4 @@
-This code downloads the daily file for all Xetra listed securities, filters for relevant information, and categorizes the data. It is meant to run on my raspberry pi to automatically fill a database.
+This code downloads the daily file for all Xetra listed securities, filters for relevant information, and categorizes the data.
+It is meant to run on my raspberry pi to automatically fill a database.
 
 It is not the complete code, but just a sample.
