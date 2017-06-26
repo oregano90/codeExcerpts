@@ -1,0 +1,318 @@
+unit G_3D;
+
+interface
+
+uses Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+     Dialogs, StdCtrls, ExtCtrls, math, Menus, ActnList;
+
+
+{type
+
+  RPunktspezifisches = record
+    x,y,z:real;
+    sehbar: boolean
+  end;
+
+  RLinienpunkte = array[1..2]of word;
+
+  TPunkt = object
+    public
+    Virt_Bild: TBitmap;
+    l,index:integer;        //l= Laenge des Arrays
+    A: array of RPunktspezifisches;
+    Linien: array of RLinienpunkte;
+    Zeichenflaechepunkte: array of TPoint;
+    procedure zufueg(init_x,init_y,init_z:integer);
+    procedure zeichne_Linie(punktname_1, punktname_2: word);
+    //procedure Liniensortieren(Linien:array of RLinienpunkte);
+    procedure Linienpunktzufueg(b,e: word);
+   // procedure zeichne_Flaeche(b: array of word);
+    procedure aender_koordinaten(punktname:word; x_n,y_n,z_n:integer);
+    procedure aender_sehbarkeit (punktname:word; s:boolean);
+    procedure gibaus(punktname:word; var x_n,y_n,z_n:real);
+    procedure Verschieben(dif:integer; Achse:word);
+    function sichtbar(const punkt_1, punkt_2, punkt_3, refpunkt: word): boolean;   //findet heraus, ob eine Fläche sichtbar ist
+    procedure lagenberechner(var x,y,z,mx,my,mz:real);
+    procedure Farbe(const punkt_1, punkt_2, punkt_3, punkt_4: word; Farb: TColor);  //Würfelspezifisch
+    procedure Mittelpunktberechnung(b:array of word; var my,mz: real);
+    procedure Laenge_Nullsetzen;
+    procedure setze(P:TPoint);                         //setzt den Cursor
+    procedure malzu(P:TPoint);
+    destructor zerstoer;
+  end;
+
+//spezielle Körper
+TQuader = object(TPunkt)
+  public
+    procedure init(t,b,h,x_n,y_n,z_n,c:integer; al,be,ga:real);
+    procedure Flaechenueberpruefung;
+    procedure zeichnen(var V:TBitmap);
+  end;
+
+//vorher genannte Prozeduren
+  function kor_y(y: real):real;
+  function kor_z(z: real):real;
+
+const zoomfaktor=1;
+var
+
+  alpha, beta, gamma: real;
+  c: integer;
+  breit,hoch:integer;
+}
+implementation
+{
+
+procedure TPunkt.zeichne_Linie(punktname_1, punktname_2: word);
+  begin
+    if ((A[punktname_1].sehbar=true) and (A[punktname_2].sehbar=true)) then Virt_Bild.Canvas.Pen.Style:=psSolid    //durchgezogene Linie
+    else Virt_Bild.Canvas.Pen.Style:=psDot;                                                           //gepunktete Linie
+    setze(Zeichenflaechepunkte[punktname_1]);
+    malzu(Zeichenflaechepunkte[punktname_2]);
+    {if (abs(kor_y(A[punktname_1].y*zoomfaktor/A[punktname_1].x)-kor_y(A[punktname_2].y*zoomfaktor/A[punktname_2].x))<1) or (abs(kor_z(A[punktname_1].z*zoomfaktor/A[punktname_1].x)-kor_z(A[punktname_2].z*zoomfaktor/A[punktname_2].x))<1) then
+      begin
+        if A[punktname_1].x>A[punktname_2].x then A[punktname_1].sehbar:=false
+        else A[punktname_2].sehbar:=false;
+      end;          //das is falsch }
+  //end;
+
+{procedure TPunkt.zeichne_Flaeche(b:array of word);
+var c:array of tpoint;
+    i:integer;
+begin
+  virt_bild.Canvas.Pen.Style:=pssolid;
+  setlength(c,4);
+  for i:=0 to 3 do
+    c[i]:=point(round(kor_y(A[b[i]].y*zoomfaktor/A[b[i]].x)),round(kor_z(A[b[i]].z*zoomfaktor/A[b[i]].x)));
+  Virt_Bild.canvas.Polygon(c);
+end;    }
+
+{procedure TPunkt.Liniensortieren(Linien:array of RLinienpunkte);
+var i,j:integer;
+    speich1, speich2:array of RLinienpunkte;
+begin
+for i:=0 to high(Linien) do
+  begin
+  if (A[Linien[i,1]].sehbar)=false and (A[Linien[i,2]].sehbar)=false then }
+
+{procedure TPunkt.Linienpunktzufueg(b,e: word);
+begin
+  index:=index+1; Linien[index,1]:=b; Linien[index,2]:=e;
+end;
+
+procedure TPunkt.zufueg(init_x,init_y,init_z:integer);
+  begin
+    l:=l+1;
+    setlength(A,l+1);
+    setlength(Zeichenflaechepunkte,l+1);
+    A[l].x:=init_x; A[l].y:=init_y; A[l].z:=init_z;
+  end;
+
+procedure TPunkt.aender_koordinaten(punktname:word; x_n,y_n,z_n:integer);
+  begin
+    A[punktname].x:=x_n; A[punktname].y:=y_n; A[punktname].z:=z_n;
+  end;
+
+procedure TPunkt.aender_sehbarkeit (punktname:word; s:boolean);
+begin   A[punktname].sehbar:=s;   end;
+
+procedure TPunkt.gibaus(punktname:word; var x_n,y_n,z_n:real);
+  begin
+    x_n:=A[punktname].x; y_n:=A[punktname].y; z_n:=A[punktname].z;
+  end;
+
+function TPunkt.sichtbar(const punkt_1, punkt_2, punkt_3, refpunkt: word): boolean;
+var x,y,z:array[0..2] of real;
+    p,xsp: real;
+    orientierung:real;
+begin
+  x[0]:=A[punkt_2].x-A[punkt_1].x;      x[1]:=A[punkt_3].x-A[punkt_1].x; //Vektoren von punkt_1 zu punkt_2 und punkt_3
+  y[0]:=A[punkt_2].y-A[punkt_1].y;      y[1]:=A[punkt_3].y-A[punkt_1].y;
+  z[0]:=A[punkt_2].z-A[punkt_1].z;      z[1]:=A[punkt_3].z-A[punkt_1].z;
+  x[2]:=y[0]*z[1]-z[0]*y[1];         //Kreuzprodukt der beiden Vektoren bilden (Normalenvektor der Ebene)
+  y[2]:=z[0]*x[1]-x[0]*z[1];
+  z[2]:=x[0]*y[1]-y[0]*x[1];
+ // p:=(-1)*((A[punkt_1].x)*x[2]+A[punkt_1].y*y[2]+A[punkt_1].z*z[2]); //damit die parameterfreie Darstellung der Ebene(x*nx+y*ny+z*nz+p=0) komplett wird muss noch ein konstanter Faktor p berechnet werden
+  orientierung:= (A[refpunkt].x-A[punkt_1].x)*x[2]+(A[refpunkt].y-A[punkt_1].y)*y[2]+(A[refpunkt].z-A[punkt_1].z)*z[2];  //es wird herausgefunden, ob normalvektor nach refpunkt orientiert ist (leitet sich aus Abstandsberechnungsformel ab)
+  if orientierung<0 then begin                                                                                            //Normalenvektor wird in Richtung des refpunkts orientiert
+    x[2]:=-x[2]; y[2]:=-y[2]; z[2]:=-z[2];
+  end;
+  orientierung:=x[2]*(-A[punkt_1].x)+y[2]*(-A[punkt_1].y)+z[2]*(-A[punkt_1].z);
+
+  if orientierung<0 then  begin                                                   //wenn der refpunkt nicht in der gleichen richtung wie der zuschauerpunkt liegt, so ist die fläche sichtbar
+    A[punkt_1].sehbar:=true; A[punkt_2].sehbar:=true; A[punkt_3].sehbar:=true;
+    sichtbar:= true;
+    end
+    else begin sichtbar:= false;  end;
+end;
+
+procedure TPunkt.Farbe(const punkt_1, punkt_2, punkt_3, punkt_4: word; Farb: TColor);
+var i:integer;
+    my,mz:real;
+    b:array[0..3] of word;
+begin
+  if(A[punkt_1].sehbar)and(A[punkt_2].sehbar)and(A[punkt_3].sehbar)and(A[punkt_4].sehbar)then
+    begin
+    b[0]:=punkt_1; b[1]:=punkt_2; b[2]:=punkt_3; b[3]:=punkt_4;
+    Mittelpunktberechnung(b,my,mz);
+    Virt_Bild.Canvas.Brush.Color:=Farb;
+    if Virt_Bild.Canvas.Pixels[round(my),round(mz)]<>clblack then
+      Virt_Bild.Canvas.FloodFill(round(my),round(mz),clblack,fsborder);
+    end;
+end;
+
+procedure TPunkt.Mittelpunktberechnung(b:array of word; var my,mz: real);
+var i:integer;
+    mx: real;
+begin
+  mx:=0; my:=0; mz:=0;
+  for i:=0 to high(b) do
+    begin
+     mx:=mx+A[b[i]].x; my:=my+A[b[i]].y; mz:=mz+A[b[i]].z;
+    end;
+  mx:=mx/(high(b)); my:=my/(high(b)); mz:=mz/(high(b));
+  my:=kor_y(my*zoomfaktor/mx); mz:=kor_z(mz*zoomfaktor/mx);
+end;
+
+procedure TPunkt.Verschieben(dif:integer; Achse:word);
+var i:integer;
+begin
+  for i:= 0 to high(A) do begin
+    if Achse=1 then A[i].x:=A[i].x+dif;                            //Achse 1=x-Achse usw.
+    if Achse=2 then A[i].y:=A[i].y+dif;
+    if Achse=3 then A[i].z:=A[i].z+dif;
+  end;
+end;
+
+procedure TPunkt.Laenge_Nullsetzen;
+begin  l:=0; end;
+
+destructor TPunkt.zerstoer;
+begin
+end;
+
+procedure TQuader.init(t,b,h,x_n,y_n,z_n,c:integer; al,be,ga:real);
+var j,i:integer;
+    mx,my,mz:real;
+begin
+  alpha:=al; beta:=be; gamma:=ga;
+  if l=0 then
+  begin
+    setlength(Zeichenflaechepunkte,9);
+    x_n:=x_n+c;
+    TPunkt.zufueg(x_n,y_n,z_n); TPunkt.zufueg(x_n,y_n,z_n+h); TPunkt.zufueg(x_n,y_n+b,z_n); TPunkt.zufueg(x_n,y_n+b,z_n+h);
+    TPunkt.zufueg(x_n+t,y_n,z_n); TPunkt.zufueg(x_n+t,y_n,z_n+h); TPunkt.zufueg(x_n+t,y_n+b,z_n); TPunkt.zufueg(x_n+t,y_n+b,z_n+h);
+  end;
+  mx:=0; my:=0; mz:=0;
+  for i:=1 to 8 do
+    begin
+     mx:=mx+A[i].x; my:=my+A[i].y; mz:=mz+A[i].z;
+    end;
+  mx:=mx/8; my:=my/8; mz:=mz/8;
+  for j:=1 to 8 do
+  begin
+    lagenberechner(A[j].x,A[j].y,A[j].z,mx,my,mz);
+    A[j].sehbar:=false;
+    Zeichenflaechepunkte[j].x:=round(kor_y(A[j].y*zoomfaktor/A[j].x));
+    Zeichenflaechepunkte[j].y:=round(kor_z(A[j].z*zoomfaktor/A[j].x));
+  end;
+end;
+
+procedure TQuader.Flaechenueberpruefung;
+begin
+  if TPunkt.sichtbar(1,2,3,5) then begin A[4].sehbar:=true; end;   //x_n-Ebene
+  if TPunkt.sichtbar(5,6,7,1) then begin A[8].sehbar:=true; end;   //x_n+t-Ebene
+  if TPunkt.sichtbar(1,2,5,3) then begin A[6].sehbar:=true; end;   //y_n-Ebene
+  if TPunkt.sichtbar(3,4,7,5) then begin A[8].sehbar:=true; end;   //y_n+b-Ebene
+  if TPunkt.sichtbar(1,3,5,2) then begin A[7].sehbar:=true; end;   //z_n-Ebene
+  if TPunkt.sichtbar(2,4,6,1) then begin A[8].sehbar:=true; end;   //z_n+h-Ebene
+end;
+
+procedure TQuader.zeichnen(var V:TBitmap);
+var i:integer;
+begin
+   Virt_Bild.Create;
+   Virt_Bild.Height:=V.Height; Virt_Bild.width:=V.width;
+  breit:=V.width; hoch:=V.height;
+
+  virt_Bild.canvas.copyrect((rect(0,0,Virt_Bild.Width,Virt_Bild.Height)),V.Canvas,rect(500,500,Virt_Bild.Width,Virt_Bild.Height));
+  virt_Bild:=V;
+  Virt_Bild:=V;
+  index:=0;
+  setlength(Linien,13);
+  Linienpunktzufueg(1,2); Linienpunktzufueg(1,3); Linienpunktzufueg(1,5);
+  Linienpunktzufueg(2,4); Linienpunktzufueg(2,6);
+  Linienpunktzufueg(3,4); Linienpunktzufueg(3,7);
+  Linienpunktzufueg(4,8);
+  Linienpunktzufueg(5,6); Linienpunktzufueg(5,7);
+  Linienpunktzufueg(6,8);
+  Linienpunktzufueg(7,8);
+  for i:=1 to 12 do
+    if ((A[Linien[i,1]].sehbar) and (A[Linien[i,2]].sehbar)) then TPunkt.zeichne_Linie(Linien[i,1],Linien[i,2]);         //damit richtige flächen auf jeden Fall gefärbt werden(und nicht der Mittelpunkt auf einer gestrichelten Linie is)
+  Farbe(1,2,3,4,clblue); Farbe(5,6,7,8,cllime); Farbe(1,2,5,6,clyellow);
+  Farbe(3,4,7,8,clgreen); Farbe(1,3,5,7,clfuchsia); Farbe(2,4,6,8,clnavy);
+  for i:=1 to 12 do
+    if (A[Linien[i,1]].sehbar=false) or (A[Linien[i,2]].sehbar=false) then TPunkt.zeichne_Linie(Linien[i,1],Linien[i,2]);
+  for i:=1 to 12 do
+    if ((A[Linien[i,1]].sehbar) and (A[Linien[i,2]].sehbar)) then TPunkt.zeichne_Linie(Linien[i,1],Linien[i,2]);
+  Farbe(1,2,3,4,clblue); Farbe(5,6,7,8,cllime); Farbe(1,2,5,6,clyellow);                                                 //damit die gepunktete Linie nicht grau bleibt
+  Farbe(3,4,7,8,clgreen); Farbe(1,3,5,7,clfuchsia); Farbe(2,4,6,8,clnavy);
+  Virt_Bild.Canvas.Brush.Color:=clgray;
+  if Virt_Bild.Canvas.Pixels[1,1]<>clgray then
+    Virt_Bild.Canvas.FloodFill(1,1,clblack,fsborder);
+  virt_Bild.canvas.copyrect((rect(0,0,Virt_Bild.Width,Virt_Bild.Height)),Virt_Bild.Canvas,rect(500,500,Virt_Bild.Width,Virt_Bild.Height));
+
+end;
+
+procedure TPunkt.lagenberechner(var x,y,z,mx,my,mz:real);             //berechnet die Koordinaten des gedrehten Punktes
+var xalt,yalt,zalt,Ax,Ay,Az:real;
+    i:integer;
+    b:array of word;
+begin
+ { xalt:=x-c;                                          //Rotation um y-Achse
+    x:=cos(alpha)*(xalt)+sin(alpha)*z;
+    z:=cos(alpha)*z-sin(alpha)*xalt;
+  xalt:=x;                                        //Rotation um z-Achse
+    x:=cos(beta)*xalt-sin(beta)*y+c;
+    y:=cos(beta)*y+sin(beta)*xalt;
+  yalt:=y;
+    y:=cos(gamma)*yalt+sin(gamma)*z;                 //Rotation um x-Achse
+    z:=cos(gamma)*z-sin(gamma)*yalt;
+  if x=0 then x:=0.000001;   }
+ { xalt:=x-mx;
+  zalt:=z-mz;                                          //Rotation um y-Achse
+    x:=cos(alpha)*(xalt)+sin(alpha)*zalt;
+    z:=cos(alpha)*zalt-sin(alpha)*xalt;
+  xalt:=x;
+  yalt:=y-my;                                        //Rotation um z-Achse
+    x:=cos(beta)*xalt-sin(beta)*yalt+mx;
+    y:=cos(beta)*yalt+sin(beta)*xalt;
+  yalt:=y;
+  zalt:=z;
+    y:=cos(gamma)*yalt+sin(gamma)*zalt+my;                 //Rotation um x-Achse
+    z:=cos(gamma)*zalt-sin(gamma)*yalt+mz;
+  if x=0 then x:=0.000001;
+end;
+
+procedure TPunkt.setze(P:TPoint);                         //setzt den Cursor
+  begin
+  Virt_Bild.Canvas.MoveTo(P.x, P.y);  //rechnet 3D in 2D um (mittels geteilt durch x)
+  end;
+
+procedure TPunkt.malzu(P:TPoint);                         //malt zu dem Punkt
+  begin
+  Virt_Bild.Canvas.lineto(P.x, P.y);
+  Virt_Bild.Canvas.Pixels[P.x, P.y]:=clblack;
+  end;
+
+function kor_y(y: real):real;                             //siehe kor_z
+  begin
+    kor_y:=(breit div 2)-y*1000;
+  end;
+
+function kor_z(z: real):real;                             //rechnet die z-Koordinate so um, dass sie auf der Paintbox ausgegeben werden kann(vom Koordinatensystem mit Ursprunhg in der Mitte zum Koordinatensystem mit Ursprung links oben, usw.)
+  begin
+    kor_z:=(hoch div 2)-z*1000;
+  end;   }
+
+end.

@@ -1,0 +1,22 @@
+unit Punkt_in_Polypon;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, ExtCtrls, math, Menus, ActnList;
+
+implementation
+
+function inside(Ecken_des_Polyeder:array of TPoint; Pruefpunkt:TPoint):boolean;
+var i:integer;
+begin
+  for i:=0 to high(Ecken_des_Polyeder) do
+    begin
+      if ((Ecken_des_Polyeder[i].y>=Pruefpunkt.y) and
+         (Ecken_des_Polyeder[i+1].y<=Pruefpunkt.Y)) or
+         ((Ecken_des_Polyeder[i].y<Pruefpunkt.y) and
+         (Ecken_des_Polyeder[i+1].y>Pruefpunkt.Y))
+end;
+end.
+ 
